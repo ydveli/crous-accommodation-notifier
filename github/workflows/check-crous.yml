@@ -1,0 +1,44 @@
+name: Alerte logement CROUS
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer Poetry
+        run: pipx install poetry
+
+      - name: Installer les dépendances
+        run: poetry install --no-root
+
+      - name: Installer Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Lancer la vérification
+        env:
+          MSE_EMAIL: ${{ secrets.MSE_EMAIL }}
+          MSE_PASSWORD: ${{ secrets.MSE_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          MY_TELEGRAM_ID: ${{ secrets.MY_TELEGRAM_ID }}
+          SEARCH_URL: ${{ vars.SEARCH_URL }}
+        run: poetry run python main.py
+
+      - name: Sauvegarder l'état (logements déjà vus)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          git diff --quiet --cached || git commit -m "Mise à jour state.json [skip ci]"
+          git push
