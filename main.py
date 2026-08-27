@@ -8,9 +8,7 @@ from typing import List, Set
 import telepot
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service as ChromiumService
 from selenium.webdriver.chrome.webdriver import WebDriver
-from chromedriver_py import binary_path  # this will get you the path variable
 
 from src.authenticator import Authenticator
 from src.parser import Parser
@@ -46,9 +44,13 @@ def save_seen_ids(ids: Set[int]) -> None:
 
 
 def load_users_conf() -> List[UserConf]:
+    # L'URL de recherche vient d'une variable d'environnement (secret GitHub
+    # SEARCH_URL) au lieu d'etre codee en dur, pour pouvoir changer de ville
+    # sans toucher au code.
     search_url = os.environ.get(
         "SEARCH_URL",
-        "https://trouverunlogement.lescrous.fr/tools/45/search?bounds=4.74754144416955_43.99596600971674_4.87245855583045_43.90603399028326",
+        # Valeur par defaut : recherche Avignon (verifiee fonctionnelle)
+        "https://trouverunlogement.lescrous.fr/tools/47/search?bounds=4.7396309_43.9967419_4.9271468_43.8866492&locationName=Avignon+%2884000%29",
     )
     return [
         UserConf(
@@ -72,12 +74,10 @@ def create_driver(headless: bool = True) -> WebDriver:
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--no-sandbox")
 
-    return webdriver.Chrome(
-        options=chrome_options,
-        service=ChromiumService(
-            executable_path=binary_path,
-        ),
-    )
+    # Selenium Manager (integre a Selenium >=4.6) detecte et telecharge
+    # automatiquement la version de ChromeDriver compatible avec le Chrome
+    # installe, evitant les incompatibilites de version.
+    return webdriver.Chrome(options=chrome_options)
 
 
 if __name__ == "__main__":
@@ -116,6 +116,8 @@ if __name__ == "__main__":
         current_ids = {a.id for a in search_results.accommodations if a.id is not None}
         all_current_ids |= current_ids
 
+        # Ne garder que les logements reellement nouveaux depuis la derniere
+        # execution (sinon on recoit les memes logements a chaque cycle).
         new_accommodations = [
             a for a in search_results.accommodations if a.id not in seen_ids
         ]

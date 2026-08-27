@@ -372,18 +372,6 @@ files = [
 ]
 
 [[package]]
-name = "chromedriver-py"
-version = "133.0.6943.141"
-description = "chromedriver binaries for all platforms"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "chromedriver_py-133.0.6943.141-py3-none-any.whl", hash = "sha256:255b8fb011a7ef0a4708546d819b954eb7ec1a46e93aa5304ba61193935cd847"},
-    {file = "chromedriver_py-133.0.6943.141.tar.gz", hash = "sha256:32e38ee17b2a39c9c253f5747374d1456a759e4f3841f386b60cdc5763c8d2fd"},
-]
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -1199,4 +1187,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "5b7cc703779079feddf063b3f5c30b1999473c05fba9fc5a73cd63e259ce5c13"
+content-hash = "15e5e5f2a36d6bebbdee4969ffc5baff5ea1bc53a2086d211e1ff254422dce96"
