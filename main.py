@@ -10,7 +10,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.webdriver import WebDriver
 
-from src.authenticator import Authenticator
 from src.parser import Parser
 from src.models import UserConf
 from src.notification_builder import NotificationBuilder
@@ -100,8 +99,12 @@ if __name__ == "__main__":
     seen_ids = load_seen_ids()
     logger.info(f"{len(seen_ids)} logement(s) deja vus lors des executions precedentes")
 
+    # Authentification MSE retiree : le selecteur CSS du bouton de connexion
+    # ne correspond plus a la structure actuelle du site (change depuis
+    # l'ecriture du script d'origine). La recherche fonctionne sans
+    # authentification, avec une reserve : le site officiel indique que la
+    # liste peut etre incomplete selon l'eligibilite DSE du profil connecte.
     driver = create_driver(headless=not args.no_headless)
-    Authenticator(settings.MSE_EMAIL, settings.MSE_PASSWORD).authenticate_driver(driver)
 
     parser = Parser(driver)
     notification_builder = NotificationBuilder()
