@@ -2,14 +2,16 @@ name: Alerte logement CROUS
 
 on:
   schedule:
+    # Toutes les 30 minutes. Note : GitHub ne garantit pas un déclenchement
+    # exact à l'horaire prévu (retard possible en cas de forte charge).
     - cron: "*/30 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch: {}  # permet de lancer le test manuellement depuis l'onglet Actions
 
 jobs:
   check:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # nécessaire pour committer state.json
     steps:
       - uses: actions/checkout@v4
 
@@ -32,7 +34,6 @@ jobs:
           MSE_PASSWORD: ${{ secrets.MSE_PASSWORD }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           MY_TELEGRAM_ID: ${{ secrets.MY_TELEGRAM_ID }}
-          SEARCH_URL: ${{ vars.SEARCH_URL }}
         run: poetry run python main.py
 
       - name: Sauvegarder l'état (logements déjà vus)
