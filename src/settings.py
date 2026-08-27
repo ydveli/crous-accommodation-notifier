@@ -1,5 +1,3 @@
-# pydantic-settings class
-
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,9 +11,7 @@ class Settings(BaseSettings):
     )
 
     MSE_LOGIN_URL: str = "https://www.messervices.etudiant.gouv.fr/envole/oauth2/login"
-
-    MSE_EMAIL: str = Field(default=...)
-    MSE_PASSWORD: str = Field(default=...)
-
+    MSE_EMAIL: str = Field(default="")
+    MSE_PASSWORD: str = Field(default="")
     TELEGRAM_BOT_TOKEN: str = Field(default=...)
     MY_TELEGRAM_ID: str = Field(default=...)
