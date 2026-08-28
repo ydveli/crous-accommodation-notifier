@@ -76,7 +76,31 @@ def create_driver(headless: bool = True) -> WebDriver:
     # Selenium Manager (integre a Selenium >=4.6) detecte et telecharge
     # automatiquement la version de ChromeDriver compatible avec le Chrome
     # installe, evitant les incompatibilites de version.
-    return webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options)
+    # Timeout de chargement de page reduit (60s au lieu des 300s par defaut)
+    # pour echouer plus vite en cas de vrai probleme, combine a des
+    # tentatives multiples ci-dessous pour absorber les ralentissements
+    # ponctuels du site.
+    driver.set_page_load_timeout(60)
+    return driver
+
+
+def get_accommodations_with_retry(parser: Parser, search_url, max_attempts: int = 3):
+    """Reessaie en cas de ralentissement ponctuel du site (timeout Selenium)."""
+    import time as _time
+
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return parser.get_accommodations(search_url)  # type: ignore
+        except Exception as e:
+            last_error = e
+            logger.warning(
+                f"Tentative {attempt}/{max_attempts} echouee ({e.__class__.__name__}), "
+                f"nouvel essai dans 15s..."
+            )
+            _time.sleep(15)
+    raise last_error
 
 
 if __name__ == "__main__":
@@ -114,7 +138,7 @@ if __name__ == "__main__":
 
     for conf in user_confs:
         logging.info(f"Handling configuration : {conf}")
-        search_results = parser.get_accommodations(conf.search_url)  # type: ignore
+        search_results = get_accommodations_with_retry(parser, conf.search_url, max_attempts=3)
 
         current_ids = {a.id for a in search_results.accommodations if a.id is not None}
         all_current_ids |= current_ids
