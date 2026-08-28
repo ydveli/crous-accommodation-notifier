@@ -85,13 +85,21 @@ def create_driver(headless: bool = True) -> WebDriver:
     return driver
 
 
-def get_accommodations_with_retry(parser: Parser, search_url, max_attempts: int = 3):
-    """Reessaie en cas de ralentissement ponctuel du site (timeout Selenium)."""
+def get_accommodations_with_retry(search_url, headless: bool, max_attempts: int = 3):
+    """Reessaie en recreant entierement le navigateur a chaque tentative.
+
+    Une session Chrome ayant subi un timeout reste souvent corrompue :
+    reessayer sur la meme session echoue quasi instantanement. On recree
+    donc un driver frais a chaque tentative, et on le ferme proprement
+    meme en cas d'echec pour ne pas laisser de processus zombies.
+    """
     import time as _time
 
     last_error = None
     for attempt in range(1, max_attempts + 1):
+        driver = create_driver(headless=headless)
         try:
+            parser = Parser(driver)
             return parser.get_accommodations(search_url)  # type: ignore
         except Exception as e:
             last_error = e
@@ -100,6 +108,8 @@ def get_accommodations_with_retry(parser: Parser, search_url, max_attempts: int 
                 f"nouvel essai dans 15s..."
             )
             _time.sleep(15)
+        finally:
+            driver.quit()
     raise last_error
 
 
@@ -128,9 +138,6 @@ if __name__ == "__main__":
     # l'ecriture du script d'origine). La recherche fonctionne sans
     # authentification, avec une reserve : le site officiel indique que la
     # liste peut etre incomplete selon l'eligibilite DSE du profil connecte.
-    driver = create_driver(headless=not args.no_headless)
-
-    parser = Parser(driver)
     notification_builder = NotificationBuilder()
     notifier = TelegramNotifier(bot)
 
@@ -138,7 +145,9 @@ if __name__ == "__main__":
 
     for conf in user_confs:
         logging.info(f"Handling configuration : {conf}")
-        search_results = get_accommodations_with_retry(parser, conf.search_url, max_attempts=3)
+        search_results = get_accommodations_with_retry(
+            conf.search_url, headless=not args.no_headless, max_attempts=3
+        )
 
         current_ids = {a.id for a in search_results.accommodations if a.id is not None}
         all_current_ids |= current_ids
@@ -161,4 +170,3 @@ if __name__ == "__main__":
             logger.info("Aucun nouveau logement depuis la derniere verification")
 
     save_seen_ids(all_current_ids)
-    driver.quit()
