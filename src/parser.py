@@ -1,9 +1,8 @@
 import logging
-from time import sleep
 from typing import List, Optional
+import requests
 from bs4 import BeautifulSoup
 from pydantic import HttpUrl
-from selenium.webdriver.chrome.webdriver import WebDriver
 
 from src.models import Accommodation, SearchResults
 from src.settings import Settings
@@ -12,19 +11,26 @@ settings = Settings()
 
 logger = logging.getLogger(__name__)
 
+# Le site rend le contenu cote serveur (pas besoin de JavaScript/navigateur
+# pour voir les logements) : une simple requete HTTP suffit, plus rapide et
+# plus fiable qu'un navigateur headless.
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
+}
+
 
 class Parser:
     """Class to parse the CROUS website and get the available accommodations"""
 
-    def __init__(self, authenticated_driver: WebDriver):
-        self.driver = authenticated_driver
-
     def get_accommodations(self, search_url: HttpUrl) -> SearchResults:
         """Returns the accommodations found on the CROUS website for the given search URL"""
         logger.info(f"Getting accommodations from the search URL: {search_url}")
-        self.driver.get(str(search_url))
-        sleep(2)
-        html = self.driver.page_source
+        response = requests.get(str(search_url), headers=HEADERS, timeout=30)
+        response.raise_for_status()
+        html = response.text
         search_results_soup = BeautifulSoup(html, "html.parser")
         num_accommodations = self._get_accomodations_count(search_results_soup)
         logger.info(f"Found {num_accommodations} accommodations")
