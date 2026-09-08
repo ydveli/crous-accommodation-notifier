@@ -59,19 +59,29 @@ def load_users_conf() -> List[UserConf]:
     ]
 
 
-def get_accommodations_with_retry(parser: Parser, search_url, max_attempts: int = 3):
-    """Reessaie en cas d'erreur reseau ponctuelle (site lent, indisponible)."""
+def get_accommodations_with_retry(parser: Parser, search_url, max_attempts: int = 5):
+    """Reessaie en cas d'erreur reseau ponctuelle.
+
+    Le site CROUS affiche une page de saturation ("Vous etes trop
+    nombreux !") en periode de forte affluence (rentree universitaire),
+    ce qui se traduit par des erreurs HTTP 503 temporaires. On augmente le
+    nombre de tentatives et le delai (backoff progressif) pour laisser le
+    temps a la charge de retomber, sans faire echouer tout le run pour
+    autant.
+    """
     last_error = None
     for attempt in range(1, max_attempts + 1):
         try:
             return parser.get_accommodations(search_url)  # type: ignore
         except Exception as e:
             last_error = e
+            wait = 20 * attempt  # 20s, 40s, 60s, 80s, 100s
             logger.warning(
                 f"Tentative {attempt}/{max_attempts} echouee ({e.__class__.__name__}), "
-                f"nouvel essai dans 15s..."
+                f"nouvel essai dans {wait}s..."
             )
-            time.sleep(15)
+            if attempt < max_attempts:
+                time.sleep(wait)
     raise last_error
 
 
@@ -101,7 +111,7 @@ if __name__ == "__main__":
 
     for conf in user_confs:
         logging.info(f"Handling configuration : {conf}")
-        search_results = get_accommodations_with_retry(parser, conf.search_url, max_attempts=3)
+        search_results = get_accommodations_with_retry(parser, conf.search_url, max_attempts=5)
 
         current_ids = {a.id for a in search_results.accommodations if a.id is not None}
         all_current_ids |= current_ids
