@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from typing import List, Set
 
+import requests
 import telepot
 
 from src.parser import Parser
@@ -40,6 +41,33 @@ def save_seen_ids(ids: Set[int]) -> None:
     STATE_FILE.write_text(json.dumps(sorted(ids)))
 
 
+def refresh_tool_id(search_url: str) -> str:
+    """Met a jour le numero d'outil (/tools/NN/) de l'URL de recherche.
+
+    Le CROUS change ce numero a chaque nouvelle periode (45 -> 47 -> 48...),
+    ce qui provoque des erreurs 404. On lit le lien actif sur la page
+    d'accueil ; en cas d'echec, on garde l'URL telle quelle.
+    """
+    import re
+
+    try:
+        r = requests.get(
+            "https://trouverunlogement.lescrous.fr/",
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=30,
+        )
+        r.raise_for_status()
+        match = re.search(r"/tools/(\d+)/search", r.text)
+        if match:
+            new_url = re.sub(r"/tools/\d+/", f"/tools/{match.group(1)}/", search_url, count=1)
+            if new_url != search_url:
+                logger.info(f"Numero d'outil mis a jour : {match.group(1)}")
+            return new_url
+    except Exception as e:
+        logger.warning(f"Detection du numero d'outil impossible ({e.__class__.__name__}), URL conservee.")
+    return search_url
+
+
 def load_users_conf() -> List[UserConf]:
     # L'URL de recherche vient d'une variable d'environnement (secret GitHub
     # SEARCH_URL) au lieu d'etre codee en dur, pour pouvoir changer de ville
@@ -47,8 +75,9 @@ def load_users_conf() -> List[UserConf]:
     search_url = os.environ.get(
         "SEARCH_URL",
         # Valeur par defaut : recherche Avignon (verifiee fonctionnelle)
-        "https://trouverunlogement.lescrous.fr/tools/47/search?bounds=4.7396309_43.9967419_4.9271468_43.8866492&locationName=Avignon+%2884000%29",
+        "https://trouverunlogement.lescrous.fr/tools/48/search?bounds=4.7396309_43.9967419_4.9271468_43.8866492&locationName=Avignon+%2884000%29",
     )
+    search_url = refresh_tool_id(search_url)
     return [
         UserConf(
             conf_title="Avignon",
